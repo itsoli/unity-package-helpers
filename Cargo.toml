@@ -1,0 +1,9 @@
+[workspace]
+
+members = [
+    "manifest-update",
+    "package-lib",
+    "package-update",
+]
+
+resolver = "2"

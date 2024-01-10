@@ -1,0 +1,14 @@
+[package]
+name = "manifest-update"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+clap = { version = "^4.4.11", features = ["derive"] }
+jwalk = "^0.8.1"
+package-lib = { path = "../package-lib" }
+rayon = "^1.8.0"
+serde = { version = "^1.0.193", features = ["derive"] }
+serde_json = "^1.0.108"
+unicode-bom = "^2.0.3"
+walkdir = "^2.4.0"
