@@ -305,13 +305,9 @@ name = "manifest-update"
 version = "0.1.0"
 dependencies = [
  "clap",
- "jwalk",
  "package-lib",
- "rayon",
  "serde",
  "serde_json",
- "unicode-bom",
- "walkdir",
 ]
 
 [[package]]
@@ -342,9 +338,11 @@ dependencies = [
 name = "package-lib"
 version = "0.1.0"
 dependencies = [
+ "jwalk",
  "regex",
  "serde",
  "serde_json",
+ "unicode-bom",
 ]
 
 [[package]]

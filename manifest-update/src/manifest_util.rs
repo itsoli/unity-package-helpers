@@ -3,8 +3,7 @@ use std::fs;
 
 use serde::{Deserialize, Serialize};
 
-use package_lib::semver::Version;
-use crate::shared::*;
+use package_lib::{open_reader, Result, Version};
 
 #[derive(Serialize, Deserialize, Debug)]
 struct ScopedRegistry {
