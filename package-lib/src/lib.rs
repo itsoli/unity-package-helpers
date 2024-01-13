@@ -25,6 +25,7 @@ pub fn open_reader<P: AsRef<Path>>(path: P) -> Result<BufReader<File>> {
     Ok(reader)
 }
 
+/// Filename of the package manifest file "package.json"
 pub static PACKAGE_MANIFEST_FILENAME: &str = "package.json";
 
 #[derive(Deserialize, Debug)]
@@ -33,6 +34,7 @@ struct PackageManifest {
     pub version: Version,
 }
 
+/// Package metadata
 #[derive(PartialEq, Eq, PartialOrd, Ord, Debug)]
 pub struct Package {
     pub name: String,
@@ -89,25 +91,31 @@ impl Iterator for PackageIterator {
 
     fn next(&mut self) -> Option<Self::Item> {
         for entry in self.it.by_ref().flatten() {
-            if entry.file_type.is_file() {
-                if let Ok(reader) = open_reader(entry.path()) {
-                    if let Ok(package) = serde_json::from_reader::<_, PackageManifest>(reader) {
-                        let mut package_path = entry.path().to_path_buf();
-                        package_path.pop();
-
-                        return Some(Package {
-                            name: package.name,
-                            version: package.version,
-                            path: package_path,
-                        });
-                    }
-                }
+            if !entry.file_type.is_file() {
+                continue;
             }
+            let Ok(reader) = open_reader(entry.path()) else {
+                continue;
+            };
+            let Ok(package) = serde_json::from_reader::<_, PackageManifest>(reader) else {
+                continue;
+            };
+
+            let mut package_path = entry.path().to_path_buf();
+            package_path.pop();
+
+            return Some(Package {
+                name: package.name,
+                version: package.version,
+                path: package_path,
+            });
         }
         None
     }
 }
 
+/// Recursively scans the provided `packages_path` for UPM packages and returns iterator over found
+/// packages.
 pub fn find_packages<P: AsRef<Path>>(packages_path: P) -> PackageIterator {
     PackageIterator::new(packages_path)
 }

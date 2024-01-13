@@ -29,29 +29,32 @@ struct Manifest {
     testables: Option<Vec<String>>,
 }
 
+/// Reads manifest at `manifest_path` and updates existing manifest dependencies to versions
+/// specified by `packages`.
 pub fn update_manifest_packages(manifest_path: &str, packages: &[Package]) -> Result<()> {
     let reader = open_reader(manifest_path)?;
     let mut manifest: Manifest = serde_json::from_reader(reader)?;
 
-    if let Some(dependencies) = &mut manifest.dependencies {
-        let package_map = packages
-            .iter()
-            .map(|package| (package.name.as_str(), &package.version))
-            .collect::<HashMap<&str, &Version>>();
+    let Some(dependencies) = &mut manifest.dependencies else {
+        return Ok(()); // Perhaps return an error here?
+    };
 
-        let mut update_names = Vec::<(&str, &Version)>::new();
-        for k in dependencies.keys() {
-            if let Some((name, version)) = package_map.get_key_value(k.as_str()) {
-                update_names.push((name, version));
-            }
+    let package_map = packages
+        .iter()
+        .map(|package| (package.name.as_str(), &package.version))
+        .collect::<HashMap<&str, &Version>>();
+
+    let mut update_names = Vec::<(&str, &Version)>::new();
+    for k in dependencies.keys() {
+        if let Some((name, version)) = package_map.get_key_value(k.as_str()) {
+            update_names.push((name, version));
         }
-        for (name, version) in update_names.into_iter() {
-            dependencies.insert(name.to_string(), version.to_string());
-        }
+    }
+    for (name, version) in update_names.into_iter() {
+        dependencies.insert(name.to_string(), version.to_string());
     }
 
     let manifest_json = serde_json::to_string_pretty(&manifest)?;
-    // println!("{}", manifest_json);
     fs::write(manifest_path, manifest_json).expect("Unable to write manifest");
 
     Ok(())

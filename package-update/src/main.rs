@@ -88,12 +88,14 @@ fn main() -> Result<()> {
         .iter()
         .filter(|e| e.status() != git2::Status::CURRENT)
     {
-        if let Some(path) = entry.path() {
-            if let Some(package) = get_package_mut(path, &mut packages) {
-                package.changes.push((path.to_owned(), entry.status()));
-                package.changes.sort_unstable_by(|(a, _), (b, _)| a.cmp(b));
-            }
-        }
+        let Some(path) = entry.path() else {
+            continue;
+        };
+        let Some(package) = get_package_mut(path, &mut packages) else {
+            continue;
+        };
+        package.changes.push((path.to_owned(), entry.status()));
+        package.changes.sort_unstable_by(|(a, _), (b, _)| a.cmp(b));
     }
 
     let changed_packages = packages
