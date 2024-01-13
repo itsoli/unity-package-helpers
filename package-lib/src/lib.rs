@@ -2,7 +2,6 @@ use std::collections::HashMap;
 use std::error;
 use std::fs::File;
 use std::io::BufReader;
-use std::iter::Flatten;
 use std::path::Path;
 use std::result;
 
@@ -27,6 +26,8 @@ pub fn open_reader<P: AsRef<Path>>(path: P) -> Result<BufReader<File>> {
     Ok(reader)
 }
 
+pub static PACKAGE_MANIFEST_FILENAME: &str = "package.json";
+
 #[derive(PartialEq, Eq, PartialOrd, Ord, Deserialize, Debug)]
 pub struct Package {
     pub name: String,
@@ -34,7 +35,7 @@ pub struct Package {
 }
 
 pub struct PackageIterator {
-    it: Flatten<DirEntryIter<((), ())>>,
+    it: DirEntryIter<((), ())>,
 }
 
 impl PackageIterator {
@@ -45,7 +46,8 @@ impl PackageIterator {
                     dir_entry_result
                         .as_ref()
                         .map(|dir_entry| {
-                            dir_entry.file_type.is_file() && dir_entry.file_name == "package.json"
+                            dir_entry.file_type.is_file()
+                                && dir_entry.file_name == PACKAGE_MANIFEST_FILENAME
                         })
                         .unwrap_or(false)
                 });
@@ -55,7 +57,7 @@ impl PackageIterator {
                             .as_ref()
                             .map(|dir_entry| {
                                 dir_entry.file_type.is_file()
-                                    && dir_entry.file_name == "package.json"
+                                    && dir_entry.file_name == PACKAGE_MANIFEST_FILENAME
                             })
                             .unwrap_or(false)
                     });
@@ -71,7 +73,7 @@ impl PackageIterator {
         );
 
         PackageIterator {
-            it: walk_dir.into_iter().flatten(),
+            it: walk_dir.into_iter(),
         }
     }
 }
@@ -80,12 +82,12 @@ impl Iterator for PackageIterator {
     type Item = Package;
 
     fn next(&mut self) -> Option<Self::Item> {
-        for entry in self.it.by_ref() {
+        for entry in self.it.by_ref().flatten() {
             if entry.file_type.is_file() {
-                let reader = open_reader(entry.path()).unwrap();
-                let result: serde_json::Result<Package> = serde_json::from_reader(reader);
-                if let Ok(package) = result {
-                    return Some(package);
+                if let Ok(reader) = open_reader(entry.path()) {
+                    if let Ok(package) = serde_json::from_reader::<_, Package>(reader) {
+                        return Some(package);
+                    }
                 }
             }
         }

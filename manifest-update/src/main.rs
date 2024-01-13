@@ -17,7 +17,7 @@ pub(crate) struct Options {
 fn main() -> Result<()> {
     let options = Options::parse();
 
-    let packages = get_packages(&options.packages_path);
+    let packages = get_packages(options.packages_path.as_str());
     println!("{} packages found", packages.len());
     for package in package_lib::get_sorted_package_list(&packages).iter() {
         println!("{} {}", package.name, package.version);
