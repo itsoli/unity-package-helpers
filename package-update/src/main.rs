@@ -1,15 +1,10 @@
-use std::cmp::{Ordering, self};
-use std::{error, collections::HashMap};
+use std::collections::HashMap;
 use std::path::{Path, PathBuf};
-// use std::fs::File;
-// use std::io::{stdin, stdout};
-use std::{result, fs};
 
 use clap::{self, Parser};
 use git2::{Repository, StatusOptions};
-use walkdir::{DirEntry, WalkDir};
 
-type Result<T> = result::Result<T, Box<dyn error::Error>>;
+use package_lib::{find_packages, Package, Result, Version, PACKAGE_MANIFEST_FILENAME};
 
 #[derive(Parser, Debug)]
 #[clap(version, about, long_about = None)]
@@ -17,26 +12,24 @@ pub(crate) struct Options {
     #[clap(short, long, default_value = ".")]
     pub repository_path: String,
     #[clap(short, long, default_value = "Packages")]
-    pub packages_path: String
+    pub packages_path: String,
+    #[clap(short, long)]
+    verbose: bool,
 }
 
-struct Package {
+struct PackageInfo {
     pub name: String,
+    pub version: Version,
     pub path: PathBuf,
-
-    // pub new: Vec<String>,
-    // pub modified: Vec<String>,
-    // pub added: Vec<String>,
-    // pub deleted: Vec<String>,
-    // pub renamed: Vec<String>,
-    pub changes: Vec<(String, git2::Status)>
+    pub changes: Vec<(String, git2::Status)>,
 }
 
-impl Package {
-    pub fn new(name: String, path: PathBuf) -> Self {
+impl PackageInfo {
+    pub fn new(package: Package) -> Self {
         Self {
-            name,
-            path,
+            name: package.name,
+            version: package.version,
+            path: package.path,
             changes: Vec::new(),
         }
     }
@@ -46,84 +39,39 @@ impl Package {
     }
 
     pub fn is_deleted(&self) -> bool {
-        // self.deleted.iter().any(|name| name.ends_with("package.json"))
-        self.changes.iter().any(|(name, status)|
+        self.changes.iter().any(|(name, status)| {
             (status.is_wt_deleted() || status.is_index_deleted())
-            && name.ends_with("package.json")
-        )
+                && name.ends_with(PACKAGE_MANIFEST_FILENAME)
+        })
     }
 }
 
-fn get_package_name(path: Option<&str>, packages: &HashMap::<String, Package>) -> Option<String> {
-    // path.and_then(|p| Path::new(p).to_owned());//.and(|x|)
-    let p = Path::new(path.unwrap());
-    for x in p {
-        let k = x.to_string_lossy().into_owned();
-        if packages.contains_key(&k) {
-            return Some(k);
+fn get_package_mut<'a>(
+    path_str: &str,
+    packages: &'a mut HashMap<String, PackageInfo>,
+) -> Option<&'a mut PackageInfo> {
+    let path = Path::new(path_str);
+    for path_component in path {
+        let path_component_str = path_component.to_str().unwrap();
+        // FIXME: This is likely a limitation of the borrow checker. Would be nice to avoid the second lookup here.
+        // if let Some(package) = packages.get_mut(path_component_str) {
+        //     return Some(package);
+        // }
+        if packages.contains_key(path_component_str) {
+            return Some(packages.get_mut(path_component_str).unwrap());
         }
     }
     None
 }
 
-// fn get_package<'a>(path: Option<&str>, packages: &'a HashMap::<String, Package>) -> Option<&'a mut Package> {
-//     // path.and_then(|p| Path::new(p).to_owned());//.and(|x|)
-//     let p = Path::new(path.unwrap());
-//     for x in p {
-//         let k = x.to_string_lossy().into_owned();
-//         let y = packages.get_mut(&k);
-//         if y.is_some() {
-//             return y;
-//         }
-//         // if packages.contains_key(&k) {
-//         //     // return Some(k);
-//         //     return
-//         // }
-//     }
-//     None
-// }
-
-// fn status_value(status: &git2::Status) -> u32 {
-//     if status.is_index_new() || status.is_wt_new() {
-//         0
-//     } else if status.is_index_modified() || status.is_wt_modified() {
-//         1
-//     } else if status.is_index_deleted() || status.is_wt_deleted() {
-//         2
-//     }
-// }
-
-// fn cmp(a: &git2::Status, b: &git2::Status) -> Ordering {
-//     if a == b {
-//         return Ordering::Equal;
-//     }
-//     let diff = status_value(a) - status_value(b);
-//     if diff < 0 { Ordering::Less } else { Ordering::Greater }
-// }
-
 fn main() -> Result<()> {
     let options = Options::parse();
 
-    let mut packages = HashMap::<String, Package>::new();
-    let repository_path_abs = fs::canonicalize(&options.repository_path)?;
-    let packages_path = Path::new(options.repository_path.as_str())
-        .join(options.packages_path.as_str());
-
-    for entry in WalkDir::new(packages_path).into_iter().filter_map(|e| e.ok()) {
-        if !entry.file_type().is_file() {
-            continue;
-        }
-        if entry.file_name() != "package.json" {
-            continue;
-        }
-        let package_path = {
-            let mut path = entry.path().to_path_buf();
-            path.pop();
-            path.strip_prefix(&repository_path_abs).unwrap().to_owned()
-        };
-        let package_name = package_path.iter().next_back().unwrap().to_owned().into_string().unwrap();
-        packages.insert(package_name.clone(), Package::new(package_name, package_path));
-    }
+    let packages_path =
+        Path::new(options.repository_path.as_str()).join(options.packages_path.as_str());
+    let mut packages = find_packages(packages_path.as_path())
+        .map(|package| (package.name.clone(), PackageInfo::new(package)))
+        .collect::<HashMap<String, PackageInfo>>();
 
     let repo = Repository::open(options.repository_path)?;
 
@@ -140,24 +88,31 @@ fn main() -> Result<()> {
         .iter()
         .filter(|e| e.status() != git2::Status::CURRENT)
     {
-        // let package = get_package(entry.path(), &packages);
-        // println!("{:?} {:?} {:?}", package.and_then(|x| Some(&x.name)), entry.path(), entry.status());
-        let package_name = get_package_name(entry.path(), &packages);
-        if package_name.is_some() {
-            let pn = package_name.unwrap();
-            let xx = packages.get_mut(&pn).unwrap();
-            xx.changes.push((pn, entry.status()));
-            // xx.changes.sort_by(|(x, y), (x2, y2)| {
-            //     let status = cmp(y, y2);
-            //     if status == Ordering::Equal { x.cmp(x2) } else { status }
-            // });
-            xx.changes.sort_unstable_by(|(x, _), (x2, _)| x.cmp(x2));
+        if let Some(path) = entry.path() {
+            if let Some(package) = get_package_mut(path, &mut packages) {
+                package.changes.push((path.to_owned(), entry.status()));
+                package.changes.sort_unstable_by(|(a, _), (b, _)| a.cmp(b));
+            }
         }
-        // println!("{:?} {:?} {:?}", package_name, entry.path(), entry.status());
     }
 
-    // let changed_packages: Vec::<Package> = packages.iter().filter(|&(_, package)| package.is_changed()).map(|(_, package)| *package).collect();
-    let changed_packages: Vec::<String> = packages.iter().filter(|&(_, package)| package.is_changed()).map(|(name, _)| name.clone()).collect();
+    let changed_packages = packages
+        .iter()
+        .filter(|&(_, package)| !package.is_deleted() && package.is_changed())
+        .map(|(_, package)| package)
+        .collect::<Vec<&PackageInfo>>();
+
+    if options.verbose {
+        println!("{} package(s) changed", changed_packages.len());
+        for package in changed_packages.iter() {
+            println!(
+                "{} {} ({})",
+                package.name,
+                package.version,
+                package.path.display()
+            )
+        }
+    }
 
     Ok(())
 }
