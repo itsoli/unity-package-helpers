@@ -1,5 +1,5 @@
 use std::error;
-use std::fs::{self, File};
+use std::fs::File;
 use std::io::BufReader;
 use std::path::{Path, PathBuf};
 use std::result;
@@ -41,7 +41,6 @@ pub struct Package {
 }
 
 pub struct PackageIterator {
-    root_path: PathBuf,
     it: DirEntryIter<((), ())>,
 }
 
@@ -79,10 +78,7 @@ impl PackageIterator {
             },
         );
 
-        let root_path_abs = fs::canonicalize(packages_path.as_ref()).unwrap();
-
         PackageIterator {
-            root_path: root_path_abs,
             it: walk_dir.into_iter(),
         }
     }
@@ -96,11 +92,9 @@ impl Iterator for PackageIterator {
             if entry.file_type.is_file() {
                 if let Ok(reader) = open_reader(entry.path()) {
                     if let Ok(package) = serde_json::from_reader::<_, PackageManifest>(reader) {
-                        let package_path = {
-                            let mut path = entry.path().to_path_buf();
-                            path.pop();
-                            path.strip_prefix(&self.root_path).unwrap().to_owned()
-                        };
+                        let mut package_path = entry.path().to_path_buf();
+                        package_path.pop();
+
                         return Some(Package {
                             name: package.name,
                             version: package.version,
