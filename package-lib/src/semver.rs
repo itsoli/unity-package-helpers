@@ -7,6 +7,9 @@ use serde::{Deserialize, Deserializer};
 #[derive(Debug)]
 pub enum VersionError {
     InvalidVersionString,
+    MajorOutOfRange,
+    MinorOutOfRange,
+    PatchOutOfRange,
 }
 
 impl error::Error for VersionError {}
@@ -16,6 +19,9 @@ impl fmt::Display for VersionError {
         use self::VersionError::*;
         match self {
             InvalidVersionString => write!(fmt, "Invalid version string"),
+            MajorOutOfRange => write!(fmt, "Major version out of u16 range"),
+            MinorOutOfRange => write!(fmt, "Minor version out of u16 range"),
+            PatchOutOfRange => write!(fmt, "Patch version out of u16 range"),
         }
     }
 }
@@ -28,20 +34,46 @@ pub struct Version {
 }
 
 impl Version {
-    // pub fn new(major: u16, minor: u16, patch: u16) -> Self {
-    //     Self { major, minor, patch }
-    // }
-
     pub fn parse(value: &str) -> Result<Version, VersionError> {
-        let re = Regex::new(r"([0-9]+)\.([0-9]+)\.([0-9]+)").unwrap();
-        let Some(captures) = re.captures(value) else {
-            return Err(VersionError::InvalidVersionString);
-        };
+        let captures = Regex::new(r"([0-9]|[1-9][0-9]+)\.([0-9]|[1-9][0-9]+)\.([0-9]|[1-9][0-9]+)")
+            .unwrap()
+            .captures(value)
+            .ok_or(VersionError::InvalidVersionString)?;
         Ok(Version {
-            major: captures[1].parse::<u16>().unwrap(),
-            minor: captures[2].parse::<u16>().unwrap(),
-            patch: captures[3].parse::<u16>().unwrap(),
+            major: captures[1]
+                .parse::<u16>()
+                .map_err(|_| VersionError::MajorOutOfRange)?,
+            minor: captures[2]
+                .parse::<u16>()
+                .map_err(|_| VersionError::MinorOutOfRange)?,
+            patch: captures[3]
+                .parse::<u16>()
+                .map_err(|_| VersionError::PatchOutOfRange)?,
         })
+    }
+
+    pub fn inrement_major(&self) -> Self {
+        Version {
+            major: self.major + 1,
+            minor: 0,
+            patch: 0,
+        }
+    }
+
+    pub fn inrement_minor(&self) -> Self {
+        Version {
+            major: self.major,
+            minor: self.minor + 1,
+            patch: 0,
+        }
+    }
+
+    pub fn inrement_patch(&self) -> Self {
+        Version {
+            major: self.major,
+            minor: self.minor,
+            patch: self.patch + 1,
+        }
     }
 }
 
