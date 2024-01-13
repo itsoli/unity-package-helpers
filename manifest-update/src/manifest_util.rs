@@ -3,7 +3,7 @@ use std::fs;
 
 use serde::{Deserialize, Serialize};
 
-use package_lib::{open_reader, Result, Version};
+use package_lib::{open_reader, Package, Result, Version};
 
 #[derive(Serialize, Deserialize, Debug)]
 struct ScopedRegistry {
@@ -29,17 +29,19 @@ struct Manifest {
     testables: Option<Vec<String>>,
 }
 
-pub fn update_manifest_packages(
-    manifest_path: &str,
-    packages: &HashMap<String, Version>,
-) -> Result<()> {
+pub fn update_manifest_packages(manifest_path: &str, packages: &[Package]) -> Result<()> {
     let reader = open_reader(manifest_path)?;
     let mut manifest: Manifest = serde_json::from_reader(reader)?;
 
     if let Some(dependencies) = &mut manifest.dependencies {
+        let package_map = packages
+            .iter()
+            .map(|package| (package.name.as_str(), &package.version))
+            .collect::<HashMap<&str, &Version>>();
+
         let mut update_names = Vec::<(&str, &Version)>::new();
         for k in dependencies.keys() {
-            if let Some((name, version)) = packages.get_key_value(k) {
+            if let Some((name, version)) = package_map.get_key_value(k.as_str()) {
                 update_names.push((name, version));
             }
         }

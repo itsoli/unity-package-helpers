@@ -1,8 +1,7 @@
-use std::collections::HashMap;
 use std::error;
-use std::fs::File;
+use std::fs::{self, File};
 use std::io::BufReader;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::result;
 
 use jwalk::{DirEntryIter, WalkDir};
@@ -28,19 +27,27 @@ pub fn open_reader<P: AsRef<Path>>(path: P) -> Result<BufReader<File>> {
 
 pub static PACKAGE_MANIFEST_FILENAME: &str = "package.json";
 
-#[derive(PartialEq, Eq, PartialOrd, Ord, Deserialize, Debug)]
-pub struct Package {
+#[derive(Deserialize, Debug)]
+struct PackageManifest {
     pub name: String,
     pub version: Version,
 }
 
+#[derive(PartialEq, Eq, PartialOrd, Ord, Debug)]
+pub struct Package {
+    pub name: String,
+    pub version: Version,
+    pub path: PathBuf,
+}
+
 pub struct PackageIterator {
+    root_path: PathBuf,
     it: DirEntryIter<((), ())>,
 }
 
 impl PackageIterator {
     pub fn new<P: AsRef<Path>>(packages_path: P) -> PackageIterator {
-        let walk_dir = WalkDir::new(packages_path).process_read_dir(
+        let walk_dir = WalkDir::new(packages_path.as_ref()).process_read_dir(
             |_depth, _path, _read_dir_state, children| {
                 let is_package = children.iter().any(|dir_entry_result| {
                     dir_entry_result
@@ -72,7 +79,10 @@ impl PackageIterator {
             },
         );
 
+        let root_path_abs = fs::canonicalize(packages_path.as_ref()).unwrap();
+
         PackageIterator {
+            root_path: root_path_abs,
             it: walk_dir.into_iter(),
         }
     }
@@ -85,8 +95,17 @@ impl Iterator for PackageIterator {
         for entry in self.it.by_ref().flatten() {
             if entry.file_type.is_file() {
                 if let Ok(reader) = open_reader(entry.path()) {
-                    if let Ok(package) = serde_json::from_reader::<_, Package>(reader) {
-                        return Some(package);
+                    if let Ok(package) = serde_json::from_reader::<_, PackageManifest>(reader) {
+                        let package_path = {
+                            let mut path = entry.path().to_path_buf();
+                            path.pop();
+                            path.strip_prefix(&self.root_path).unwrap().to_owned()
+                        };
+                        return Some(Package {
+                            name: package.name,
+                            version: package.version,
+                            path: package_path,
+                        });
                     }
                 }
             }
@@ -97,22 +116,4 @@ impl Iterator for PackageIterator {
 
 pub fn find_packages<P: AsRef<Path>>(packages_path: P) -> PackageIterator {
     PackageIterator::new(packages_path)
-}
-
-pub fn get_packages<P: AsRef<Path>>(packages_path: P) -> HashMap<String, Version> {
-    find_packages(packages_path)
-        .map(|package| (package.name, package.version))
-        .collect::<HashMap<String, Version>>()
-}
-
-pub fn get_sorted_package_list(packages: &HashMap<String, Version>) -> Vec<Package> {
-    let mut package_list = packages
-        .iter()
-        .map(|(k, v)| Package {
-            name: k.clone(),
-            version: v.clone(),
-        })
-        .collect::<Vec<Package>>();
-    package_list.sort_unstable();
-    package_list
 }
