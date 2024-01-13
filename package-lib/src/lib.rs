@@ -16,7 +16,7 @@ pub use semver::Version;
 
 pub type Result<T> = result::Result<T, Box<dyn error::Error>>;
 
-pub fn open_reader<P: AsRef<Path>>(path: P) -> Result<BufReader::<File>> {
+pub fn open_reader<P: AsRef<Path>>(path: P) -> Result<BufReader<File>> {
     let mut file = File::open(&path)?;
     let bom_len = Bom::from(&mut file).len();
     file = File::open(&path)?;
@@ -39,29 +39,36 @@ pub struct PackageIterator {
 
 impl PackageIterator {
     pub fn new<P: AsRef<Path>>(packages_path: P) -> PackageIterator {
-        let walk_dir = WalkDir::new(packages_path).process_read_dir(|_depth, _path, _read_dir_state, children| {
-            let is_package = children.iter().any(|dir_entry_result| {
-                dir_entry_result
-                    .as_ref()
-                    .map(|dir_entry| dir_entry.file_type.is_file() && dir_entry.file_name == "package.json")
-                    .unwrap_or(false)
-            });
-            if is_package {
-                children.retain(|dir_entry_result| {
+        let walk_dir = WalkDir::new(packages_path).process_read_dir(
+            |_depth, _path, _read_dir_state, children| {
+                let is_package = children.iter().any(|dir_entry_result| {
                     dir_entry_result
                         .as_ref()
-                        .map(|dir_entry| dir_entry.file_type.is_file() && dir_entry.file_name == "package.json")
+                        .map(|dir_entry| {
+                            dir_entry.file_type.is_file() && dir_entry.file_name == "package.json"
+                        })
                         .unwrap_or(false)
                 });
-            } else {
-                children.retain(|dir_entry_result| {
-                    dir_entry_result
-                        .as_ref()
-                        .map(|dir_entry| dir_entry.file_type.is_dir())
-                        .unwrap_or(false)
-                });
-            }
-        });
+                if is_package {
+                    children.retain(|dir_entry_result| {
+                        dir_entry_result
+                            .as_ref()
+                            .map(|dir_entry| {
+                                dir_entry.file_type.is_file()
+                                    && dir_entry.file_name == "package.json"
+                            })
+                            .unwrap_or(false)
+                    });
+                } else {
+                    children.retain(|dir_entry_result| {
+                        dir_entry_result
+                            .as_ref()
+                            .map(|dir_entry| dir_entry.file_type.is_dir())
+                            .unwrap_or(false)
+                    });
+                }
+            },
+        );
 
         PackageIterator {
             it: walk_dir.into_iter().flatten(),
@@ -90,16 +97,19 @@ pub fn find_packages<P: AsRef<Path>>(packages_path: P) -> PackageIterator {
     PackageIterator::new(packages_path)
 }
 
-pub fn get_packages<P: AsRef<Path>>(packages_path: P) -> HashMap::<String, Version> {
+pub fn get_packages<P: AsRef<Path>>(packages_path: P) -> HashMap<String, Version> {
     find_packages(packages_path)
         .map(|package| (package.name, package.version))
-        .collect::<HashMap::<String, Version>>()
+        .collect::<HashMap<String, Version>>()
 }
 
-pub fn get_sorted_package_list(packages: &HashMap::<String, Version>) -> Vec<Package> {
+pub fn get_sorted_package_list(packages: &HashMap<String, Version>) -> Vec<Package> {
     let mut package_list = packages
         .iter()
-        .map(|(k, v)| Package { name: k.clone(), version: v.clone() })
+        .map(|(k, v)| Package {
+            name: k.clone(),
+            version: v.clone(),
+        })
         .collect::<Vec<Package>>();
     package_list.sort_unstable();
     package_list

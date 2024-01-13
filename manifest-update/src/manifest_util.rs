@@ -31,7 +31,7 @@ struct Manifest {
 
 pub fn update_manifest_packages(
     manifest_path: &str,
-    packages: &HashMap::<String, Version>
+    packages: &HashMap<String, Version>,
 ) -> Result<()> {
     let reader = open_reader(manifest_path)?;
     let mut manifest: Manifest = serde_json::from_reader(reader)?;

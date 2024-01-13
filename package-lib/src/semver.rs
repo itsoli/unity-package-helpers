@@ -1,8 +1,8 @@
 use regex::Regex;
 use std::{error, fmt};
 
-use serde::{Deserialize, Deserializer};
 use serde::de::{self, Visitor};
+use serde::{Deserialize, Deserializer};
 
 #[derive(Debug)]
 pub enum VersionError {
@@ -35,7 +35,7 @@ impl Version {
     pub fn parse(value: &str) -> Result<Version, VersionError> {
         let re = Regex::new(r"([0-9]+)\.([0-9]+)\.([0-9]+)").unwrap();
         let Some(captures) = re.captures(value) else {
-            return Err(VersionError::InvalidVersionString)
+            return Err(VersionError::InvalidVersionString);
         };
         Ok(Version {
             major: captures[1].parse::<u16>().unwrap(),
