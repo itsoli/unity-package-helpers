@@ -1,6 +1,7 @@
 use regex::Regex;
 use std::{error, fmt};
 
+use lazy_static::lazy_static;
 use serde::de::{self, Visitor};
 use serde::{Deserialize, Deserializer};
 
@@ -38,8 +39,12 @@ pub struct Version {
 impl Version {
     /// Parses a semantic version from a string.
     pub fn parse(value: &str) -> Result<Version, VersionError> {
-        let captures = Regex::new(r"([0-9]|[1-9][0-9]+)\.([0-9]|[1-9][0-9]+)\.([0-9]|[1-9][0-9]+)")
-            .unwrap()
+        lazy_static! {
+            static ref VERSION_PATTERN: Regex =
+                Regex::new(r"([0-9]|[1-9][0-9]+)\.([0-9]|[1-9][0-9]+)\.([0-9]|[1-9][0-9]+)")
+                    .unwrap();
+        }
+        let captures = VERSION_PATTERN
             .captures(value)
             .ok_or(VersionError::InvalidVersionString)?;
         Ok(Version {
