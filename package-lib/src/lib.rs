@@ -14,6 +14,7 @@ pub use semver::Version;
 
 pub type Result<T> = result::Result<T, Box<dyn error::Error>>;
 
+/// Opens a file reader and skips the BOM if present.
 pub fn open_reader<P: AsRef<Path>>(path: P) -> Result<BufReader<File>> {
     let mut file = File::open(&path)?;
     let bom_len = Bom::from(&mut file).len();
@@ -25,7 +26,7 @@ pub fn open_reader<P: AsRef<Path>>(path: P) -> Result<BufReader<File>> {
     Ok(reader)
 }
 
-/// Filename of the package manifest file "package.json"
+/// Filename of the package manifest file "package.json".
 pub static PACKAGE_MANIFEST_FILENAME: &str = "package.json";
 
 #[derive(Deserialize, Debug)]
@@ -34,7 +35,7 @@ struct PackageManifest {
     pub version: Version,
 }
 
-/// Package metadata
+/// Unity package metadata.
 #[derive(PartialEq, Eq, PartialOrd, Ord, Debug)]
 pub struct Package {
     pub name: String,
@@ -42,6 +43,7 @@ pub struct Package {
     pub path: PathBuf,
 }
 
+/// Iterator over UPM packages.
 pub struct PackageIterator {
     it: DirEntryIter<((), ())>,
 }

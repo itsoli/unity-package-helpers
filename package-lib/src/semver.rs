@@ -4,6 +4,7 @@ use std::{error, fmt};
 use serde::de::{self, Visitor};
 use serde::{Deserialize, Deserializer};
 
+/// Error parsing a semantic version.
 #[derive(Debug)]
 pub enum VersionError {
     InvalidVersionString,
@@ -26,6 +27,7 @@ impl fmt::Display for VersionError {
     }
 }
 
+/// Semantic version.
 #[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Debug)]
 pub struct Version {
     pub major: u16,
@@ -34,6 +36,7 @@ pub struct Version {
 }
 
 impl Version {
+    /// Parses a semantic version from a string.
     pub fn parse(value: &str) -> Result<Version, VersionError> {
         let captures = Regex::new(r"([0-9]|[1-9][0-9]+)\.([0-9]|[1-9][0-9]+)\.([0-9]|[1-9][0-9]+)")
             .unwrap()
@@ -52,6 +55,7 @@ impl Version {
         })
     }
 
+    /// Returns the next version with the major number incremented.
     pub fn inrement_major(&self) -> Self {
         Version {
             major: self.major + 1,
@@ -60,6 +64,7 @@ impl Version {
         }
     }
 
+    /// Returns the next version with the minor number incremented.
     pub fn inrement_minor(&self) -> Self {
         Version {
             major: self.major,
@@ -68,6 +73,7 @@ impl Version {
         }
     }
 
+    /// Returns the next version with the patch number incremented.
     pub fn inrement_patch(&self) -> Self {
         Version {
             major: self.major,

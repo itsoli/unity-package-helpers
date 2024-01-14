@@ -9,14 +9,18 @@ use package_lib::{find_packages, Package, Result, Version, PACKAGE_MANIFEST_FILE
 #[derive(Parser, Debug)]
 #[clap(version, about, long_about = None)]
 pub(crate) struct Options {
+    /// Path to the git repository
     #[clap(short, long, default_value = ".")]
     pub repository_path: String,
+    /// Path to the packages directory
     #[clap(short, long, default_value = "Packages")]
     pub packages_path: String,
+    /// Verbose output
     #[clap(short, long)]
     verbose: bool,
 }
 
+/// Information about a package along with git changes.
 struct PackageInfo {
     pub name: String,
     pub version: Version,
@@ -46,6 +50,8 @@ impl PackageInfo {
     }
 }
 
+/// Returns a mutable reference to the package in the `packages` hash map at `path_str` or `None`
+/// if no package exists.
 fn get_package_mut<'a>(
     path_str: &str,
     packages: &'a mut HashMap<String, PackageInfo>,

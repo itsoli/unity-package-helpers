@@ -1,6 +1,7 @@
 [package]
 name = "package-update"
 version = "0.1.0"
+description = "Helper tool to update UPM package versions and release notes"
 edition = "2021"
 
 [dependencies]

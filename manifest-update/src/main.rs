@@ -8,10 +8,13 @@ use package_lib::{find_packages, Package, Result};
 #[derive(Parser, Debug)]
 #[clap(version, about, long_about = None)]
 pub(crate) struct Options {
-    #[clap(short, long, default_value = ".")]
+    /// Path to the packages directory
+    #[clap(short, long, default_value = "Packages")]
     pub packages_path: String,
-    #[clap(short, long, default_value = "manifest.json")]
+    /// Path to the manifest file
+    #[clap(short, long, default_value = "Packages/manifest.json")]
     pub manifest_path: String,
+    /// Verbose output
     #[clap(short, long)]
     verbose: bool,
 }

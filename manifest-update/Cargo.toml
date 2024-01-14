@@ -1,6 +1,7 @@
 [package]
 name = "manifest-update"
-version = "0.1.0"
+version = "1.0.0"
+description = "Update the package manifest of a Unity project to current versions"
 edition = "2021"
 
 [dependencies]
