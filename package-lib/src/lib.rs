@@ -1,6 +1,6 @@
 use std::error;
 use std::fs::File;
-use std::io::BufReader;
+use std::io::{BufReader, Seek, SeekFrom};
 use std::path::{Path, PathBuf};
 use std::result;
 
@@ -18,12 +18,8 @@ pub type Result<T> = result::Result<T, Box<dyn error::Error>>;
 pub fn open_reader<P: AsRef<Path>>(path: P) -> Result<BufReader<File>> {
     let mut file = File::open(&path)?;
     let bom_len = Bom::from(&mut file).len();
-    file = File::open(&path)?;
-    let mut reader = BufReader::new(file);
-    if bom_len > 0 {
-        reader.seek_relative(bom_len as i64)?;
-    }
-    Ok(reader)
+    file.seek(SeekFrom::Start(bom_len as u64))?;
+    Ok(BufReader::new(file))
 }
 
 /// Filename of the package manifest file "package.json".
