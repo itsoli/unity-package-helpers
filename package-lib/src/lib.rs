@@ -48,24 +48,28 @@ impl PackageIterator {
     pub fn new<P: AsRef<Path>>(packages_path: P) -> PackageIterator {
         let walk_dir = WalkDir::new(packages_path.as_ref()).process_read_dir(
             |_depth, _path, _read_dir_state, children| {
-                let is_package = children.iter().any(|dir_entry_result| {
-                    dir_entry_result
+                // Find index of package.json file in children.
+                let mut package_index = None;
+                for (index, dir_entry_result) in children.iter().enumerate() {
+                    if dir_entry_result
                         .as_ref()
                         .map(|dir_entry| {
                             dir_entry.file_type.is_file()
                                 && dir_entry.file_name == PACKAGE_MANIFEST_FILENAME
                         })
                         .unwrap_or(false)
-                });
-                if is_package {
-                    children.retain(|dir_entry_result| {
-                        dir_entry_result
-                            .as_ref()
-                            .map(|dir_entry| {
-                                dir_entry.file_type.is_file()
-                                    && dir_entry.file_name == PACKAGE_MANIFEST_FILENAME
-                            })
-                            .unwrap_or(false)
+                    {
+                        package_index = Some(index);
+                        break;
+                    }
+                }
+
+                if let Some(package_index) = package_index {
+                    let mut index = 0;
+                    children.retain(|_| {
+                        let retain = index == package_index;
+                        index += 1;
+                        retain
                     });
                 } else {
                     children.retain(|dir_entry_result| {
