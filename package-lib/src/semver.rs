@@ -1,7 +1,9 @@
-use regex::Regex;
-use std::{error, fmt};
+use std::error;
+use std::fmt;
+use std::str::FromStr;
 
 use lazy_static::lazy_static;
+use regex::Regex;
 use serde::de::{self, Visitor};
 use serde::{Deserialize, Deserializer};
 
@@ -37,29 +39,6 @@ pub struct Version {
 }
 
 impl Version {
-    /// Parses a semantic version from a string.
-    pub fn parse(value: &str) -> Result<Version, VersionError> {
-        lazy_static! {
-            static ref VERSION_PATTERN: Regex =
-                Regex::new(r"([0-9]|[1-9][0-9]+)\.([0-9]|[1-9][0-9]+)\.([0-9]|[1-9][0-9]+)")
-                    .unwrap();
-        }
-        let captures = VERSION_PATTERN
-            .captures(value)
-            .ok_or(VersionError::InvalidVersionString)?;
-        Ok(Version {
-            major: captures[1]
-                .parse::<u16>()
-                .map_err(|_| VersionError::MajorOutOfRange)?,
-            minor: captures[2]
-                .parse::<u16>()
-                .map_err(|_| VersionError::MinorOutOfRange)?,
-            patch: captures[3]
-                .parse::<u16>()
-                .map_err(|_| VersionError::PatchOutOfRange)?,
-        })
-    }
-
     /// Returns the next version with the major number incremented.
     pub fn inrement_major(&self) -> Self {
         Version {
@@ -88,6 +67,33 @@ impl Version {
     }
 }
 
+impl FromStr for Version {
+    type Err = VersionError;
+
+    /// Parses a semantic version from a string.
+    fn from_str(value: &str) -> Result<Self, Self::Err> {
+        lazy_static! {
+            static ref VERSION_PATTERN: Regex =
+                Regex::new(r"([0-9]|[1-9][0-9]+)\.([0-9]|[1-9][0-9]+)\.([0-9]|[1-9][0-9]+)")
+                    .unwrap();
+        }
+        let captures = VERSION_PATTERN
+            .captures(value)
+            .ok_or(VersionError::InvalidVersionString)?;
+        Ok(Version {
+            major: captures[1]
+                .parse::<u16>()
+                .map_err(|_| VersionError::MajorOutOfRange)?,
+            minor: captures[2]
+                .parse::<u16>()
+                .map_err(|_| VersionError::MinorOutOfRange)?,
+            patch: captures[3]
+                .parse::<u16>()
+                .map_err(|_| VersionError::PatchOutOfRange)?,
+        })
+    }
+}
+
 impl fmt::Display for Version {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         write!(fmt, "{}.{}.{}", self.major, self.minor, self.patch)
@@ -107,7 +113,8 @@ impl<'de> Visitor<'de> for VersionVisitor {
     where
         E: de::Error,
     {
-        Version::parse(v).map_err(|err| E::custom(err.to_string()))
+        v.parse::<Version>()
+            .map_err(|err| E::custom(err.to_string()))
     }
 }
 
