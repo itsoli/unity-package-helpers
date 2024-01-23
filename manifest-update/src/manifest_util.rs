@@ -1,9 +1,8 @@
 use std::collections::{BTreeMap, HashMap};
-use std::fs;
 
 use serde::{Deserialize, Serialize};
 
-use package_lib::{open_reader, Package, Result, Version};
+use package_lib::{read_json, write_json, Package, Result, Version};
 
 #[derive(Serialize, Deserialize, Debug)]
 struct ScopedRegistry {
@@ -32,8 +31,7 @@ struct Manifest {
 /// Reads manifest at `manifest_path` and updates existing manifest dependencies to versions
 /// specified by `packages`.
 pub fn update_manifest_packages(manifest_path: &str, packages: &[Package]) -> Result<()> {
-    let reader = open_reader(manifest_path)?;
-    let mut manifest: Manifest = serde_json::from_reader(reader)?;
+    let mut manifest: Manifest = read_json(manifest_path)?;
 
     let Some(dependencies) = &mut manifest.dependencies else {
         return Ok(()); // Perhaps return an error here?
@@ -54,8 +52,7 @@ pub fn update_manifest_packages(manifest_path: &str, packages: &[Package]) -> Re
         dependencies.insert(name.to_string(), version.to_string());
     }
 
-    let manifest_json = serde_json::to_string_pretty(&manifest)?;
-    fs::write(manifest_path, manifest_json).expect("Unable to write manifest");
+    write_json(manifest_path, &manifest)?;
 
     Ok(())
 }
