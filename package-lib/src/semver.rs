@@ -59,7 +59,7 @@ impl fmt::Display for Position {
 }
 
 /// Semantic version. Does not support pre-release or build metadata.
-#[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Debug)]
+#[derive(PartialEq, Eq, PartialOrd, Ord, Copy, Clone, Debug)]
 pub struct Version {
     pub major: u16,
     pub minor: u16,
@@ -68,7 +68,7 @@ pub struct Version {
 
 impl Version {
     /// Returns the next version with the major number incremented.
-    pub fn inrement_major(&self) -> Self {
+    pub fn increment_major(&self) -> Self {
         Version {
             major: self.major + 1,
             minor: 0,
@@ -77,7 +77,7 @@ impl Version {
     }
 
     /// Returns the next version with the minor number incremented.
-    pub fn inrement_minor(&self) -> Self {
+    pub fn increment_minor(&self) -> Self {
         Version {
             major: self.major,
             minor: self.minor + 1,
@@ -86,7 +86,7 @@ impl Version {
     }
 
     /// Returns the next version with the patch number incremented.
-    pub fn inrement_patch(&self) -> Self {
+    pub fn increment_patch(&self) -> Self {
         Version {
             major: self.major,
             minor: self.minor,
