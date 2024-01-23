@@ -1,26 +1,17 @@
 use std::error;
-use std::fs::File;
-use std::io::{BufReader, Seek, SeekFrom};
 use std::path::{Path, PathBuf};
 use std::result;
 
 use jwalk::{DirEntryIter, WalkDir};
 use serde::Deserialize;
-use unicode_bom::Bom;
 
-pub mod semver;
+mod io;
+mod semver;
 
+pub use io::*;
 pub use semver::Version;
 
 pub type Result<T> = result::Result<T, Box<dyn error::Error>>;
-
-/// Opens a file reader and skips the BOM if present.
-pub fn open_reader<P: AsRef<Path>>(path: P) -> Result<BufReader<File>> {
-    let mut file = File::open(&path)?;
-    let bom_len = Bom::from(&mut file).len();
-    file.seek(SeekFrom::Start(bom_len as u64))?;
-    Ok(BufReader::new(file))
-}
 
 /// Filename of the package manifest file "package.json".
 pub static PACKAGE_MANIFEST_FILENAME: &str = "package.json";
@@ -96,10 +87,7 @@ impl Iterator for PackageIterator {
             if !entry.file_type.is_file() {
                 continue;
             }
-            let Ok(reader) = open_reader(entry.path()) else {
-                continue;
-            };
-            let Ok(package) = serde_json::from_reader::<_, PackageManifest>(reader) else {
+            let Ok(package): Result<PackageManifest> = read_json(entry.path()) else {
                 continue;
             };
 
