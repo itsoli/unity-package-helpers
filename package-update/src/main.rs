@@ -5,7 +5,7 @@ use git2::Repository;
 use owo_colors::OwoColorize;
 use serde_json::{json, Value};
 
-use package_lib::{read_json, trim_string, write_json, Result, Version, PACKAGE_MANIFEST_FILENAME};
+use package_lib::{normalize_line_endings, read_json, trim_string, write_json, Result, Version};
 
 mod command;
 mod diff;
@@ -25,9 +25,13 @@ fn read_line_from_stdin() -> String {
 }
 
 fn write_package_manifest(package: &PackageInfo, new_version: Version) -> Result<()> {
-    let package_manifest_path = package.path.join(PACKAGE_MANIFEST_FILENAME);
+    let package_manifest_path = package.path.join(package_lib::PACKAGE_MANIFEST_FILENAME);
+
     let mut package_json: Value = read_json(package_manifest_path.as_path())?;
-    // TODO: error handling
+    if !package_json.is_object() {
+        return Err("package.json is not an object".into());
+    }
+
     package_json["version"] = json!(new_version.to_string());
 
     write_json(package_manifest_path, &package_json)
@@ -43,6 +47,7 @@ fn write_package_changelog(
 
     let mut text = fs::read_to_string(changelog_path.as_path())?;
     trim_string(&mut text);
+    normalize_line_endings(&mut text);
     if !text.is_empty() {
         text.push('\n');
     }

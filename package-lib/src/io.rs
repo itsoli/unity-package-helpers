@@ -23,6 +23,11 @@ pub fn trim_string(input: &mut String) {
     }
 }
 
+/// Normalizes line endings to LF. Does not handle CR-only line endings properly.
+pub fn normalize_line_endings(input: &mut String) {
+    input.retain(|ch| ch != '\r');
+}
+
 /// Attamps to open a file read-only and skips the BOM if present.
 pub fn open_file_skip_bom<P: AsRef<Path>>(path: P) -> Result<File> {
     let mut file = File::open(path)?;
