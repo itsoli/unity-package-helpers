@@ -1,4 +1,5 @@
 use std::error;
+use std::fs;
 use std::path::{Path, PathBuf};
 use std::result;
 
@@ -37,7 +38,10 @@ pub struct PackageIterator {
 
 impl PackageIterator {
     pub fn new<P: AsRef<Path>>(packages_path: P) -> PackageIterator {
-        let walk_dir = WalkDir::new(packages_path.as_ref()).process_read_dir(
+        let packages_path = fs::canonicalize(packages_path.as_ref())
+            .unwrap_or(packages_path.as_ref().to_path_buf());
+
+        let walk_dir = WalkDir::new(packages_path.as_path()).process_read_dir(
             |_depth, _path, _read_dir_state, children| {
                 // Find index of package.json file in children.
                 let mut package_index = None;

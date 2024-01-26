@@ -160,6 +160,12 @@ fn main() -> Result<()> {
     let options = Options::parse();
 
     let repo = Repository::open(options.repository_path.as_path())?;
+    if repo.is_bare() {
+        return Err("repository is bare".into());
+    }
+    if repo.is_shallow() {
+        return Err("repository is shallow".into());
+    }
 
     let changed_packages = get_changed_packages(
         &repo,

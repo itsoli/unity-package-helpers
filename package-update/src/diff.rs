@@ -1,3 +1,4 @@
+use std::fs;
 use std::path::Path;
 use std::str;
 
@@ -9,7 +10,10 @@ use package_lib::Result;
 use crate::PackageInfo;
 
 fn get_path_in_repo<'a>(repo: &Repository, path: &'a Path) -> Result<&'a Path> {
-    let repo_workdir_path = repo.workdir().unwrap();
+    let repo_workdir_path = repo.workdir().unwrap_or(repo.path());
+    let repo_workdir_path =
+        fs::canonicalize(repo_workdir_path).unwrap_or(repo_workdir_path.to_path_buf());
+
     let package_relative_path = Path::strip_prefix(path, repo_workdir_path)?;
     Ok(package_relative_path)
 }
