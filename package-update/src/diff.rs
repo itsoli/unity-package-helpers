@@ -1,5 +1,3 @@
-use std::fs;
-use std::path::Path;
 use std::str;
 
 use git2::Repository;
@@ -7,16 +5,7 @@ use owo_colors::OwoColorize;
 
 use package_lib::Result;
 
-use crate::PackageInfo;
-
-fn get_path_in_repo<'a>(repo: &Repository, path: &'a Path) -> Result<&'a Path> {
-    let repo_workdir_path = repo.workdir().unwrap_or(repo.path());
-    let repo_workdir_path =
-        fs::canonicalize(repo_workdir_path).unwrap_or(repo_workdir_path.to_path_buf());
-
-    let package_relative_path = Path::strip_prefix(path, repo_workdir_path)?;
-    Ok(package_relative_path)
-}
+use crate::Package;
 
 fn diff_file_cb(delta: git2::DiffDelta, _progress: f32) -> bool {
     let old_file = delta.old_file().path().map_or("", |x| x.to_str().unwrap());
@@ -71,13 +60,11 @@ fn diff_line_cb(
     true
 }
 
-pub(crate) fn print_diff(repo: &Repository, package: &PackageInfo) -> Result<()> {
-    let package_relative_path = get_path_in_repo(repo, package.path.as_path())?;
-
+pub(crate) fn print_diff(repo: &Repository, package: &Package) -> Result<()> {
     let mut diff_options = git2::DiffOptions::new();
     diff_options
         .ignore_whitespace(true)
-        .pathspec(package_relative_path);
+        .pathspec(package.path_in_repo(repo));
 
     let head = repo.head()?.peel_to_tree()?;
     let diff = repo.diff_tree_to_index(Some(&head), None, Some(&mut diff_options))?;

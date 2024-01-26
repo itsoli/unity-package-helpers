@@ -24,7 +24,7 @@ fn read_line_from_stdin() -> String {
     input
 }
 
-fn write_package_manifest(package: &PackageInfo, new_version: Version) -> Result<()> {
+fn write_package_manifest(package: &Package, new_version: Version) -> Result<()> {
     let package_manifest_path = package.path.join(package_lib::PACKAGE_MANIFEST_FILENAME);
 
     let mut package_json: Value = read_json(package_manifest_path.as_path())?;
@@ -38,7 +38,7 @@ fn write_package_manifest(package: &PackageInfo, new_version: Version) -> Result
 }
 
 fn write_package_changelog(
-    package: &PackageInfo,
+    package: &Package,
     new_version: Version,
     change_lines: &[String],
     options: &Options,
@@ -71,7 +71,7 @@ fn write_package_changelog(
     Ok(())
 }
 
-fn update_package(package: &PackageInfo, new_version: Version, options: &Options) -> Result<()> {
+fn update_package(package: &Package, new_version: Version, options: &Options) -> Result<()> {
     let mut change_lines = Vec::<String>::new();
 
     loop {
@@ -96,7 +96,7 @@ fn update_package(package: &PackageInfo, new_version: Version, options: &Options
 }
 
 fn process_packages(
-    changed_packages: &[PackageInfo],
+    changed_packages: &[Package],
     repo: &Repository,
     options: &Options,
 ) -> Result<()> {
@@ -159,7 +159,8 @@ fn process_packages(
 fn main() -> Result<()> {
     let options = Options::parse();
 
-    let repo = Repository::open(options.repository_path.as_path())?;
+    let repo = Repository::open(options.repository_path.as_path())
+        .map_err(|err| err.message().to_owned())?;
     if repo.is_bare() {
         return Err("repository is bare".into());
     }
