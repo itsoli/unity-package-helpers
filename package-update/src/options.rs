@@ -8,7 +8,7 @@ pub(crate) struct Options {
     /// Path to the git repository
     #[clap(short, long, default_value = ".")]
     pub repository_path: PathBuf,
-    /// Path to the packages directory
+    /// Path to the packages directory, relative to the repository
     #[clap(short, long, default_value = "Packages")]
     pub packages_path: PathBuf,
     /// Name of the changelog file

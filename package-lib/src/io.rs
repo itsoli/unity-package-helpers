@@ -7,25 +7,37 @@ use unicode_bom::Bom;
 
 use crate::Result;
 
-/// Trims whitespace from the beginning and end of the string.
-pub fn trim_string(input: &mut String) {
-    while let Some(ch) = input.chars().next_back() {
-        if !ch.is_whitespace() {
-            break;
+pub trait Trim {
+    /// Trims whitespace from the beginning and end of the string.
+    fn trim(&mut self);
+}
+
+impl Trim for String {
+    fn trim(&mut self) {
+        while let Some(ch) = self.chars().next_back() {
+            if !ch.is_whitespace() {
+                break;
+            }
+            self.pop();
         }
-        input.pop();
-    }
-    while let Some(ch) = input.chars().next() {
-        if !ch.is_whitespace() {
-            break;
+        while let Some(ch) = self.chars().next() {
+            if !ch.is_whitespace() {
+                break;
+            }
+            self.remove(0);
         }
-        input.remove(0);
     }
 }
 
-/// Normalizes line endings to LF. Does not handle CR-only line endings properly.
-pub fn normalize_line_endings(input: &mut String) {
-    input.retain(|ch| ch != '\r');
+pub trait NormalizeLineEndings {
+    /// Normalizes line endings to LF. Does not handle CR-only line endings properly.
+    fn normalize_line_endings(&mut self);
+}
+
+impl NormalizeLineEndings for String {
+    fn normalize_line_endings(&mut self) {
+        self.retain(|ch| ch != '\r');
+    }
 }
 
 /// Attamps to open a file read-only and skips the BOM if present.

@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::str;
@@ -9,20 +8,30 @@ use package_lib::{find_packages, Result, Version, PACKAGE_MANIFEST_FILENAME};
 
 /// Information about a package along with git changes.
 pub(crate) struct Package {
+    /// Name of the package.
     pub name: String,
+    /// Version of the package.
     pub version: Version,
+    /// Path of the package relative to the repository workdir.
     pub path: PathBuf,
+    /// Absolute path of the package.
+    pub path_abs: PathBuf,
+    /// Git changes of the package.
     pub changes: Vec<(String, git2::Status)>,
 }
 
 impl Package {
-    pub fn new(package: package_lib::Package) -> Self {
-        Self {
+    pub fn new(package: package_lib::Package, repo: &Repository) -> Result<Self> {
+        let path = get_path_in_repo(package.path.as_path(), repo);
+        let changes = get_changes(repo, path.as_path())?;
+
+        Ok(Self {
             name: package.name,
             version: package.version,
-            path: package.path,
-            changes: Vec::new(),
-        }
+            path,
+            path_abs: package.path,
+            changes,
+        })
     }
 
     pub fn is_changed(&self) -> bool {
@@ -35,15 +44,6 @@ impl Package {
                 && name.ends_with(PACKAGE_MANIFEST_FILENAME)
         })
     }
-
-    /// Returns the path of the package relative to the repository workdir.
-    pub fn path_in_repo(&self, repo: &Repository) -> PathBuf {
-        let repo_workdir_path = get_repo_workdir_path(repo);
-        self.path
-            .strip_prefix(repo_workdir_path)
-            .map(|p| p.to_path_buf())
-            .unwrap_or(self.path.clone())
-    }
 }
 
 fn get_repo_workdir_path(repo: &Repository) -> PathBuf {
@@ -51,29 +51,17 @@ fn get_repo_workdir_path(repo: &Repository) -> PathBuf {
     fs::canonicalize(repo_workdir_path).unwrap_or(repo_workdir_path.to_path_buf())
 }
 
-/// Returns a mutable reference to the package in the `packages` hash map at `path_str` or `None`
-/// if no package exists.
-fn get_package_mut<'a>(
-    path_str: &str,
-    packages: &'a mut HashMap<String, Package>,
-) -> Option<&'a mut Package> {
-    let path = Path::new(path_str);
-    for path_component in path {
-        let path_component_str = path_component.to_str().unwrap();
-        // FIXME: This is likely a limitation of the borrow checker. Would be nice to avoid the second lookup here.
-        // if let Some(package) = packages.get_mut(path_component_str) {
-        //     return Some(package);
-        // }
-        if packages.contains_key(path_component_str) {
-            return Some(packages.get_mut(path_component_str).unwrap());
-        }
-    }
-    None
+fn get_path_in_repo(path: &Path, repo: &Repository) -> PathBuf {
+    let repo_workdir_path = get_repo_workdir_path(repo);
+    path.strip_prefix(repo_workdir_path)
+        .map(|p| p.to_path_buf())
+        .unwrap_or(path.to_path_buf())
 }
 
-fn set_statuses(repo: &Repository, packages: &mut HashMap<String, Package>) -> Result<()> {
+fn get_changes(repo: &Repository, path: &Path) -> Result<Vec<(String, git2::Status)>> {
     let mut status_options = git2::StatusOptions::new();
     status_options
+        .pathspec(path)
         .show(git2::StatusShow::Index)
         .include_ignored(false)
         .include_untracked(false)
@@ -82,21 +70,19 @@ fn set_statuses(repo: &Repository, packages: &mut HashMap<String, Package>) -> R
 
     let statuses = repo.statuses(Some(&mut status_options))?;
 
-    for entry in statuses
+    let mut changes = statuses
         .iter()
         .filter(|e| e.status() != git2::Status::CURRENT)
-    {
-        let Some(path) = entry.path() else {
-            continue;
-        };
-        let Some(package) = get_package_mut(path, packages) else {
-            continue;
-        };
-        package.changes.push((path.to_owned(), entry.status()));
-        package.changes.sort_unstable_by(|(a, _), (b, _)| a.cmp(b));
-    }
+        .map(|e| {
+            let path = e.path().unwrap();
+            let status = e.status();
+            (path.to_owned(), status)
+        })
+        .collect::<Vec<(String, git2::Status)>>();
 
-    Ok(())
+    changes.sort_unstable_by(|(a, _), (b, _)| a.cmp(b));
+
+    Ok(changes)
 }
 
 pub(crate) fn get_changed_packages(
@@ -105,16 +91,13 @@ pub(crate) fn get_changed_packages(
     packages_path: &Path,
 ) -> Result<Vec<Package>> {
     let packages_path = repository_path.join(packages_path);
-    let mut packages = find_packages(packages_path.as_path())
-        .map(|package| (package.name.clone(), Package::new(package)))
-        .collect::<HashMap<String, Package>>();
 
-    set_statuses(repo, &mut packages)?;
-
-    let mut changed_packages = packages
-        .into_values()
+    let mut changed_packages = find_packages(packages_path.as_path())
+        .map(|package| Package::new(package, repo))
+        .filter_map(|package| package.ok())
         .filter(|package| !package.is_deleted() && package.is_changed())
         .collect::<Vec<Package>>();
+
     changed_packages.sort_unstable_by(|a, b| a.name.cmp(&b.name));
 
     Ok(changed_packages)

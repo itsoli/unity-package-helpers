@@ -63,8 +63,8 @@ fn diff_line_cb(
 pub(crate) fn print_diff(repo: &Repository, package: &Package) -> Result<()> {
     let mut diff_options = git2::DiffOptions::new();
     diff_options
-        .ignore_whitespace(true)
-        .pathspec(package.path_in_repo(repo));
+        .pathspec(package.path.as_path())
+        .ignore_whitespace(true);
 
     let head = repo.head()?.peel_to_tree()?;
     let diff = repo.diff_tree_to_index(Some(&head), None, Some(&mut diff_options))?;

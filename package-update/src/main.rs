@@ -5,27 +5,29 @@ use git2::Repository;
 use owo_colors::OwoColorize;
 use serde_json::{json, Value};
 
-use package_lib::{normalize_line_endings, read_json, trim_string, write_json, Result, Version};
+use package_lib::{read_json, write_json, NormalizeLineEndings, Result, Trim, Version};
 
 mod command;
 mod diff;
 mod options;
-mod status;
+mod package;
 
-use command::*;
-use diff::*;
-use options::*;
-use status::*;
+use crate::command::*;
+use crate::diff::*;
+use crate::options::*;
+use crate::package::*;
 
 fn read_line_from_stdin() -> String {
     let mut input = String::new();
     let _ = io::stdin().read_line(&mut input).map_err(|_| input.clear());
-    trim_string(&mut input);
+    input.trim();
     input
 }
 
 fn write_package_manifest(package: &Package, new_version: Version) -> Result<()> {
-    let package_manifest_path = package.path.join(package_lib::PACKAGE_MANIFEST_FILENAME);
+    let package_manifest_path = package
+        .path_abs
+        .join(package_lib::PACKAGE_MANIFEST_FILENAME);
 
     let mut package_json: Value = read_json(package_manifest_path.as_path())?;
     if !package_json.is_object() {
@@ -43,11 +45,11 @@ fn write_package_changelog(
     change_lines: &[String],
     options: &Options,
 ) -> Result<()> {
-    let changelog_path = package.path.join(options.changelog_filename.as_str());
+    let changelog_path = package.path_abs.join(options.changelog_filename.as_str());
 
     let mut text = fs::read_to_string(changelog_path.as_path())?;
-    trim_string(&mut text);
-    normalize_line_endings(&mut text);
+    text.trim();
+    text.normalize_line_endings();
     if !text.is_empty() {
         text.push('\n');
     }
@@ -159,8 +161,8 @@ fn process_packages(
 fn main() -> Result<()> {
     let options = Options::parse();
 
-    let repo = Repository::open(options.repository_path.as_path())
-        .map_err(|err| err.message().to_owned())?;
+    let repository_path = options.repository_path.as_path();
+    let repo = Repository::open(repository_path).map_err(|err| err.message().to_owned())?;
     if repo.is_bare() {
         return Err("repository is bare".into());
     }
@@ -168,11 +170,8 @@ fn main() -> Result<()> {
         return Err("repository is shallow".into());
     }
 
-    let changed_packages = get_changed_packages(
-        &repo,
-        options.repository_path.as_path(),
-        options.packages_path.as_path(),
-    )?;
+    let packages_path = options.packages_path.as_path();
+    let changed_packages = get_changed_packages(&repo, repository_path, packages_path)?;
 
     if options.verbose {
         println!("{} package(s) changed", changed_packages.len());
