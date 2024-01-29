@@ -24,6 +24,22 @@ fn read_line_from_stdin() -> String {
     input
 }
 
+fn status_to_str(status: &git2::Status) -> &str {
+    if status.is_index_new() || status.is_wt_new() {
+        "new"
+    } else if status.is_index_modified() || status.is_wt_modified() {
+        "modified"
+    } else if status.is_index_deleted() || status.is_wt_deleted() {
+        "deleted"
+    } else if status.is_index_renamed() || status.is_wt_renamed() {
+        "renamed"
+    } else if status.is_index_typechange() || status.is_wt_typechange() {
+        "typechange"
+    } else {
+        "unknown"
+    }
+}
+
 fn write_package_manifest(package: &Package, new_version: Version) -> Result<()> {
     let package_manifest_path = package
         .path_abs
