@@ -55,9 +55,7 @@ const COMMAND_LIST: [CommandMeta; 7] = [
 
 pub(crate) fn get_command_kind_from_input(input: &str) -> Option<CommandKind> {
     let mut chars = input.chars();
-    let Some(key) = chars.next() else {
-        return None;
-    };
+    let key = chars.next()?;
     if chars.next().is_some() {
         return None;
     }

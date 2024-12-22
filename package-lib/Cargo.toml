@@ -1,10 +1,10 @@
 [package]
 name = "package-lib"
-version = "1.1.0"
+version = "1.2.0"
 edition = "2021"
 
 [dependencies]
 jwalk = "^0.8.1"
-serde = { version = "^1.0.204", features = ["derive"] }
-serde_json = "^1.0.121"
+serde = { version = "^1.0.216", features = ["derive"] }
+serde_json = "^1.0.134"
 unicode-bom = "^2.0.3"
