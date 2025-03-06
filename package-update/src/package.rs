@@ -5,7 +5,7 @@ use std::str;
 
 use git2::Repository;
 
-use package_lib::{find_packages, Result, Version, PACKAGE_MANIFEST_FILENAME};
+use package_lib::{PACKAGE_MANIFEST_FILENAME, Result, Version, find_packages};
 
 /// Information about a package along with git changes.
 pub(crate) struct Package {

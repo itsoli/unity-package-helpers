@@ -3,9 +3,9 @@ use std::io::{self, Write};
 
 use git2::Repository;
 use owo_colors::OwoColorize;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 
-use package_lib::{read_json, write_json, NormalizeLineEndings, Result, Trim, Version};
+use package_lib::{NormalizeLineEndings, Result, Trim, Version, read_json, write_json};
 
 mod command;
 mod diff;

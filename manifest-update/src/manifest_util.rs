@@ -2,7 +2,7 @@ use std::collections::{BTreeMap, HashMap};
 
 use serde::{Deserialize, Serialize};
 
-use package_lib::{read_json, write_json, Package, Result, Version};
+use package_lib::{Package, Result, Version, read_json, write_json};
 
 #[derive(Serialize, Deserialize, Debug)]
 struct ScopedRegistry {

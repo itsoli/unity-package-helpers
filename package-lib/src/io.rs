@@ -2,7 +2,7 @@ use std::fs::File;
 use std::io::{BufWriter, Read, Seek, SeekFrom, Write};
 use std::path::Path;
 
-use serde::{de, Serialize};
+use serde::{Serialize, de};
 use unicode_bom::Bom;
 
 use crate::Result;

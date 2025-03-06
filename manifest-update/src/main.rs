@@ -3,7 +3,7 @@ use clap::{self, Parser};
 mod manifest_util;
 
 use manifest_util::update_manifest_packages;
-use package_lib::{find_packages, Package, Result};
+use package_lib::{Package, Result, find_packages};
 
 #[derive(Parser, Debug)]
 #[clap(version, about, long_about = None)]
