@@ -90,7 +90,7 @@ fn set_changes(repo: &Repository, packages: &mut HashMap<String, Package>) -> Re
         .iter()
         .filter(|e| e.status() != git2::Status::CURRENT)
     {
-        let Some(path) = entry.path() else {
+        let Ok(path) = entry.path() else {
             continue;
         };
         let Some(package) = get_package_mut(path, packages) else {
